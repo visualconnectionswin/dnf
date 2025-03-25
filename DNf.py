@@ -1,4 +1,5 @@
 import os
+import shutil
 from flask import Flask, request, jsonify
 import undetected_chromedriver as uc
 from selenium.webdriver.common.by import By
@@ -14,8 +15,15 @@ def scrape():
         return jsonify({'error': 'No se ha proporcionado el parámetro "doc".'}), 400
 
     try:
-        # Obtiene la ruta de Chromium (usa la variable de entorno o ruta por defecto)
-        chrome_binary = os.environ.get("GOOGLE_CHROME_BIN", "/usr/bin/chromium")
+        # Intenta obtener la ruta del ejecutable:
+        # Primero, verifica la variable de entorno GOOGLE_CHROME_BIN
+        chrome_binary = os.environ.get("GOOGLE_CHROME_BIN")
+        # Si no está definida, intenta buscar chromium-browser o chromium en el sistema.
+        if not chrome_binary:
+            chrome_binary = shutil.which("chromium-browser") or shutil.which("chromium")
+        if not chrome_binary:
+            return jsonify({'error': 'No se encontró el ejecutable de Chromium.'}), 500
+
         options = uc.ChromeOptions()
         options.binary_location = chrome_binary
         options.add_argument('--headless')
@@ -60,11 +68,9 @@ def scrape():
                             'Apellido Paterno': cells[2].get_text(strip=True),
                             'Apellido Materno': cells[3].get_text(strip=True)
                         }
-                        # Formatear el resultado en el orden deseado: DNI, Nombres, Apellido Paterno, Apellido Materno
                         result_str = f"{data['DNI']} {data['Nombres']} {data['Apellido Paterno']} {data['Apellido Materno']}"
                         return jsonify({'result': result_str})
         
-        # Si no se encontró la tabla o datos, se retorna el HTML completo
         return jsonify({'result': html})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
