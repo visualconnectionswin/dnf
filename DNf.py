@@ -1,3 +1,4 @@
+import os
 from flask import Flask, request, jsonify
 import undetected_chromedriver as uc
 from selenium.webdriver.common.by import By
@@ -13,7 +14,10 @@ def scrape():
         return jsonify({'error': 'No se ha proporcionado el parámetro "doc".'}), 400
 
     try:
+        # Obtiene la ruta de Chromium (usa la variable de entorno o ruta por defecto)
+        chrome_binary = os.environ.get("GOOGLE_CHROME_BIN", "/usr/bin/chromium")
         options = uc.ChromeOptions()
+        options.binary_location = chrome_binary
         options.add_argument('--headless')
         options.add_argument('--no-sandbox')
         options.add_argument('--disable-dev-shm-usage')
@@ -40,7 +44,7 @@ def scrape():
         html = driver.page_source
         driver.quit()
 
-        # Parseamos el HTML para extraer la tabla de resultados
+        # Parsear el HTML para extraer la tabla de resultados
         soup = BeautifulSoup(html, 'html.parser')
         table = soup.find('table', {'class': 'table'})
         if table:
@@ -56,7 +60,7 @@ def scrape():
                             'Apellido Paterno': cells[2].get_text(strip=True),
                             'Apellido Materno': cells[3].get_text(strip=True)
                         }
-                        # Formatear el resultado en el orden deseado
+                        # Formatear el resultado en el orden deseado: DNI, Nombres, Apellido Paterno, Apellido Materno
                         result_str = f"{data['DNI']} {data['Nombres']} {data['Apellido Paterno']} {data['Apellido Materno']}"
                         return jsonify({'result': result_str})
         
