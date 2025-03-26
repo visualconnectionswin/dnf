@@ -1,9 +1,6 @@
 const express = require('express');
-const puppeteer = require('puppeteer-extra');
-const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+const puppeteer = require('puppeteer');
 const cheerio = require('cheerio');
-
-puppeteer.use(StealthPlugin());
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -19,33 +16,40 @@ app.get('/scrape', async (req, res) => {
         return res.status(400).json({ error: 'No se ha proporcionado el parámetro "doc".' });
     }
 
+    let browser = null;
     try {
-        const browser = await puppeteer.launch({
-            headless: 'new', // Usar nuevo modo headless
+        browser = await puppeteer.launch({
+            headless: true,
             args: [
-                '--no-sandbox', 
-                '--disable-setuid-sandbox', 
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
                 '--disable-dev-shm-usage',
                 '--disable-accelerated-2d-canvas',
-                '--no-first-run',
-                '--no-zygote',
-                '--single-process'
-            ]
+                '--disable-gpu',
+                '--window-size=1920,1080',
+                '--hide-scrollbars'
+            ],
+            executablePath: '/usr/bin/google-chrome-stable'
         });
 
         const page = await browser.newPage();
         
         // Configuraciones anti-detección
         await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
-        await page.setViewport({ width: 851, height: 713 });
+        await page.setViewport({ width: 1366, height: 768 });
 
-        await page.goto('https://eldni.com/pe/buscar-por-dni', { 
-            waitUntil: 'networkidle0',
-            timeout: 60000 
-        });
+        try {
+            await page.goto('https://eldni.com/pe/buscar-por-dni', { 
+                waitUntil: 'networkidle0',
+                timeout: 60000 
+            });
+        } catch (navError) {
+            console.error('Error de navegación:', navError);
+            return res.status(500).json({ error: 'No se pudo cargar la página' });
+        }
 
         // Esperar y llenar input de DNI
-        await page.waitForSelector('#dni');
+        await page.waitForSelector('#dni', { timeout: 10000 });
         await page.type('#dni', doc);
 
         // Hacer click en botón buscar
@@ -58,8 +62,7 @@ app.get('/scrape', async (req, res) => {
 
         // Obtener contenido HTML
         const html = await page.content();
-        await browser.close();
-
+        
         // Parsear con Cheerio
         const $ = cheerio.load(html);
         const table = $('table.table tbody tr');
@@ -85,7 +88,12 @@ app.get('/scrape', async (req, res) => {
 
     } catch (error) {
         console.error('Error en scraping:', error);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ 
+            error: 'Error en el proceso de scraping', 
+            details: error.message 
+        });
+    } finally {
+        if (browser) await browser.close();
     }
 });
 
