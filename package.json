@@ -4,17 +4,15 @@
   "description": "DNI Scraper for Peru",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js"
+    "preinstall": "chmod +x install-chrome.sh && ./install-chrome.sh",
+    "start": "node index.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   },
   "dependencies": {
     "express": "^4.18.2",
     "puppeteer": "^21.6.1",
-    "puppeteer-extra": "^3.3.6",
-    "puppeteer-extra-plugin-stealth": "^2.11.2",
     "cheerio": "^1.0.0-rc.12"
-  },
-  "devDependencies": {
-    "nodemon": "^3.0.1"
   }
 }
