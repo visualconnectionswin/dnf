@@ -1,5 +1,0 @@
-Flask
-undetected-chromedriver
-selenium
-gunicorn==20.1.0
-beautifulsoup4==4.12.2
